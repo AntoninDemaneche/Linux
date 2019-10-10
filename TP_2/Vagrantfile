@@ -1,0 +1,57 @@
+$script = <<-SCRIPT
+echo "Install en cours"
+sudo apt-get update && sudo apt-get upgrade
+echo "Install d'apache"
+sudo apt-get install apache2 -y
+echo "Install de php7"
+sudo apt-get install php-geshi -y
+echo "Install rsync"
+sudo apt-get install rsync
+echo "Install dokuwiki"
+ cd /tmp
+    wget https://download.dokuwiki.org/src/dokuwiki/dokuwiki-stable.tgz
+    tar -xvf dokuwiki-stable.tgz
+    sudo rm /var/www/html/index.html
+    sudo cp -r dokuwiki-2018-04-22b/* /var/www/html/
+    sudo chown -R www-data /var/www/html/
+echo "install terminé"
+echo "Install Cron"
+sudo apt-get install cron
+crontal -l
+SCRIPT
+
+$server_wiki = <<-SCRIPT 
+echo "Création Virtual-Host"
+sudo nano /etc/apache2/sites-available/wiki.lab.local
+SCRIPT
+
+$telnet_backup = <<-SCRIPT 
+echo "Telnet sur Wiki.lab.local"
+telnet wiki.lab.local.conf
+
+SCRIPT
+
+Vagrant.configure("2") do |config|
+ 
+  config.vm.box = "generic/debian10"
+  config.vm.define "wiki" do |wiki|
+    wiki.vm.network "private_network" , ip: "192.168.20.12"
+    wiki.vm.network "forwarded_port", guest: 80, host: 8281
+    wiki.vm.hostname = "wiki"
+end
+
+  
+  config.vm.define "backup" do |backup|
+    backup.vm.network "private_network", ip: "192.168.20.6"
+    backup.vm.network "forwarded_port", guest: 80, host: 8181
+    backup.vm.hostname = "backup"
+  end
+
+  config.vm.provision "shell",  
+    inline: $script
+  config.vm.provision "file", source: "vagrant_rsa.ppk", destination: "/home/vagrant/.ssh/id_rsa"
+  config.vm.provision "file", source: "vagrant_rsa.pub", destination: "/home/vagrant/.ssh/authorized_keys"
+  config.vm.provision "file", source: "vagrant_rsa.pub", destination: "/home/vagrant/.ssh/id_rsa.pub"
+  config.vm.provision :shell, path: "ssh.sh", privileged: false
+  
+end
